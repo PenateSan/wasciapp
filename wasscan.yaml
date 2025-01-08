@@ -5,9 +5,13 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      docker: 20
+      nodejs: 16 # Cambia si usas otro lenguaje
     commands:
-      - echo "Instalando dependencias y configuraciones iniciales"
+      - echo "Instalando dependencias y configurando Docker"
+      - nohup /usr/local/bin/start-docker & # Inicia el servicio Docker
+      - echo "Esperando que Docker esté listo..."
+      - sleep 15
+      - docker info # Verifica que Docker está funcionando correctamente
 
   pre_build:
     commands:
