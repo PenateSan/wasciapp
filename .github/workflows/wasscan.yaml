@@ -1,28 +1,31 @@
-name: CICD WAS Scan
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-jobs:
-  tenablescan:
-    name: was-cicd
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone repo
-        uses: actions/checkout@v2
-      - name: Build + Run PetStore
-        run: |
-          docker pull swaggerapi/petstore
-          docker run -d -p 8080:8080 -e SWAGGER_URL=http://petstore:8080 -e SWAGGER_PATH=/v2 --name petstore swaggerapi/petstore
-          ls $(pwd)
-      - name: Run WAS
-        run: |
-          docker pull tenable/was-scanner:latest
-          docker run -v $(pwd):/scanner -t -e WAS_MODE=cicd -e ACCESS_KEY=${ACCESS_KEY} -e SECRET_KEY=${SECRET_KEY} -e WAS_CONFIG_FILE=./was/tenable_was.conf --link petstore tenable/was-scanner:latest || true
-          ls $(pwd)
-        env:
-          ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+version: 0.2
 
-          # TODO - pullback results as artifact
+phases:
+  install:
+    runtime-versions:
+      docker: 20
+    commands:
+      - echo "Installing dependencies..."
+      - yum install -y docker
+      - service docker start
+      - docker --version
+
+  pre_build:
+    commands:
+      - echo "Pulling Docker images..."
+      - docker pull swaggerapi/petstore || echo "Failed to pull PetStore image"
+      - docker pull tenable/was-scanner:latest
+
+  build:
+    commands:
+      - echo "Starting PetStore container..."
+      - docker run -d --name petstore -e SWAGGER_URL=http://petstore:8080 -e SWAGGER_BASE_PATH=/v2 swaggerapi/petstore
+      - echo "Running WAS scan..."
+      - docker run -v $(pwd):/scanner -t -e WAS_MODE=cicd -e ACCESS_KEY=${ACCESS_KEY} -e SECRET_KEY=${SECRET_KEY} --link petstore tenable/was-scanner:latest || true
+      - echo "Listing files in workspace..."
+      - ls $(pwd)
+
+artifacts:
+  files:
+    - "**/*"
+
