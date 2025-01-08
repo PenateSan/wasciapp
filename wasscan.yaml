@@ -1,9 +1,6 @@
 version: 0.2
 
-env:
-  secrets-manager:
-    ACCESS_KEY: 41d1a96daea6ad9af5f113ce3ae39503498761b0534e4e13fd892026040731e4
-    SECRET_KEY: 697aa33ea4334d72255d457eaf29504e96ba8b6709714a50ba77d3d9bc12da76
+
 
 phases:
   install:
@@ -25,8 +22,8 @@ phases:
       - echo "Ejecutando análisis WAS con Tenable"
       - docker run -v $(pwd):/scanner -t \
           -e WAS_MODE=cicd \
-          -e ACCESS_KEY=${ACCESS_KEY} \
-          -e SECRET_KEY=${SECRET_KEY} \
+          -e ACCESS_KEY=41d1a96daea6ad9af5f113ce3ae39503498761b0534e4e13fd892026040731e4 \
+          -e SECRET_KEY=697aa33ea4334d72255d457eaf29504e96ba8b6709714a50ba77d3d9bc12da76 \
           -e WAS_CONFIG_FILE=./was/tenable_was.conf \
           --link petstore tenable/was-scanner:latest || true
 
