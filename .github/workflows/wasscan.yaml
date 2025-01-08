@@ -1,31 +1,50 @@
 version: 0.2
 
+env:
+  secrets-manager:
+    ACCESS_KEY: 41d1a96daea6ad9af5f113ce3ae39503498761b0534e4e13fd892026040731e4
+    SECRET_KEY: 697aa33ea4334d72255d457eaf29504e96ba8b6709714a50ba77d3d9bc12da76
+
 phases:
   install:
     runtime-versions:
       docker: 20
     commands:
-      - echo "Installing dependencies..."
-      - yum install -y docker
-      - service docker start
-      - docker --version
+      - echo "Instalando dependencias y configuraciones iniciales"
 
   pre_build:
     commands:
-      - echo "Pulling Docker images..."
-      - docker pull swaggerapi/petstore || echo "Failed to pull PetStore image"
+      - echo "Preparando entorno para la ejecución"
+      - docker pull swaggerapi/petstore
       - docker pull tenable/was-scanner:latest
 
   build:
     commands:
-      - echo "Starting PetStore container..."
-      - docker run -d --name petstore -e SWAGGER_URL=http://petstore:8080 -e SWAGGER_BASE_PATH=/v2 swaggerapi/petstore
-      - echo "Running WAS scan..."
-      - docker run -v $(pwd):/scanner -t -e WAS_MODE=cicd -e ACCESS_KEY=${ACCESS_KEY} -e SECRET_KEY=${SECRET_KEY} --link petstore tenable/was-scanner:latest || true
-      - echo "Listing files in workspace..."
-      - ls $(pwd)
+      - echo "Ejecutando PetStore en Docker"
+      - docker run -d -p 8080:8080 -e SWAGGER_URL=http://petstore:8080 -e SWAGGER_PATH=/v2 --name petstore swaggerapi/petstore
+      - echo "Ejecutando análisis WAS con Tenable"
+      - docker run -v $(pwd):/scanner -t \
+          -e WAS_MODE=cicd \
+          -e ACCESS_KEY=${ACCESS_KEY} \
+          -e SECRET_KEY=${SECRET_KEY} \
+          -e WAS_CONFIG_FILE=./was/tenable_was.conf \
+          --link petstore tenable/was-scanner:latest || true
+
+  post_build:
+    commands:
+      - echo "Limpieza y finalización"
+      - docker stop petstore
+      - docker rm petstore
 
 artifacts:
   files:
-    - "**/*"
+    - '**/*'
+    - '!node_modules/**/*'
+  discard-paths: yes
+  base-directory: . # Cambia esto según la ubicación de tus resultados
+
+cache:
+  paths:
+    - '/root/.cache/**/*'
+
 
